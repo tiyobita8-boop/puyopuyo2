@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>ぷよぷよ強化版</title>
+<style>
+body { text-align:center; font-family:sans-serif; background:#222; color:#fff;}
+canvas { background:#111; margin:10px;}
+</style>
+</head>
+
+<body>
+
+<h1>ぷよぷよ強化版</h1>
+<p>← → 移動 / ↓ 落下 / ↑ 回転</p>
+<p>スコア: <span id="score">0</span></p>
+
+<canvas id="game" width="240" height="480"></canvas>
+<canvas id="next" width="120" height="120"></canvas>
+
+<script>
+const COLS=6, ROWS=12, SIZE=40;
+const colors=["","red","blue","green","yellow"];
+
+let field = Array.from({length:ROWS},()=>Array(COLS).fill(0));
+let score=0;
+
+let puyo = newPuyo();
+let next = newPuyo();
+
+const game = document.getElementById("game");
+const ctx = game.getContext("2d");
+
+const nextCanvas = document.getElementById("next");
+const nctx = nextCanvas.getContext("2d");
+
+function rand(){ return Math.floor(Math.random()*4)+1; }
+
+function newPuyo(){
+  return {
+    x:2,y:0,rot:0,
+    color:rand(),
+    subColor:rand()
+  };
+}
+
+function draw(){
+  ctx.clearRect(0,0,240,480);
+
+  for(let y=0;y<ROWS;y++){
+    for(let x=0;x<COLS;x++){
+      if(field[y][x]) drawCircle(ctx,x,y,field[y][x]);
+    }
+  }
+
+  drawPuyo(ctx,puyo);
+  drawNext();
+}
+
+function drawCircle(ctx,x,y,color){
+  ctx.fillStyle=colors[color];
+  ctx.beginPath();
+  ctx.arc(x*SIZE+20,y*SIZE+20,18,0,Math.PI*2);
+  ctx.fill();
+}
+
+function drawPuyo(ctx,p){
+  drawCircle(ctx,p.x,p.y,p.color);
+  let dx=[0,1,0,-1][p.rot];
+  let dy=[-1,0,1,0][p.rot];
+  drawCircle(ctx,p.x+dx,p.y+dy,p.subColor);
+}
+
+function drawNext(){
+  nctx.clearRect(0,0,120,120);
+  drawCircle(nctx,1,1,next.color);
+  drawCircle(nctx,1,2,next.subColor);
+}
+
+function canMove(x,y,rot){
+  let dx=[0,1,0,-1][rot];
+  let dy=[-1,0,1,0][rot];
+
+  let pos=[[x,y],[x+dx,y+dy]];
+
+  return pos.every(([px,py])=>
+    px>=0&&px<COLS&&py<ROWS&&(py<0||field[py][px]==0)
+  );
+}
+
+function move(dx,dy){
+  if(canMove(puyo.x+dx,puyo.y+dy,puyo.rot)){
+    puyo.x+=dx;
+    puyo.y+=dy;
+  }
+}
+
+function rotate(){
+  let r=(puyo.rot+1)%4;
+  if(canMove(puyo.x,puyo.y,r)) puyo.rot=r;
+}
+
+function drop(){
+  if(canMove(puyo.x,puyo.y+1,puyo.rot)){
+    puyo.y++;
+  }else{
+    fix();
+  }
+}
+
+function fix(){
+  let dx=[0,1,0,-1][puyo.rot];
+  let dy=[-1,0,1,0][puyo.rot];
+
+  field[puyo.y][puyo.x]=puyo.color;
+  if(puyo.y+dy>=0)
+    field[puyo.y+dy][puyo.x+dx]=puyo.subColor;
+
+  chain();
+  puyo=next;
+  next=newPuyo();
+
+  if(!canMove(puyo.x,puyo.y,puyo.rot)){
+    alert("ゲームオーバー");
+    location.reload();
+  }
+}
+
+function chain(){
+  let removed=false;
+  let visited=Array.from({length:ROWS},()=>Array(COLS).fill(false));
+  let total=0;
+
+  for(let y=0;y<ROWS;y++){
+    for(let x=0;x<COLS;x++){
+      if(field[y][x]&&!visited[y][x]){
+        let group=[];
+        dfs(x,y,field[y][x],group,visited);
+        if(group.length>=4){
+          group.forEach(([gx,gy])=>field[gy][gx]=0);
+          total+=group.length;
+          removed=true;
+        }
+      }
+    }
+  }
+
+  if(removed){
+    score += total*10;
+    document.getElementById("score").textContent=score;
+    fall();
+    setTimeout(chain,200);
+  }
+}
+
+function dfs(x,y,color,group,visited){
+  if(x<0||x>=COLS||y<0||y>=ROWS) return;
+  if(visited[y][x]||field[y][x]!=color) return;
+
+  visited[y][x]=true;
+  group.push([x,y]);
+
+  dfs(x+1,y,color,group,visited);
+  dfs(x-1,y,color,group,visited);
+  dfs(x,y+1,color,group,visited);
+  dfs(x,y-1,color,group,visited);
+}
+
+function fall(){
+  for(let x=0;x<COLS;x++){
+    let stack=[];
+    for(let y=ROWS-1;y>=0;y--){
+      if(field[y][x]) stack.push(field[y][x]);
+      field[y][x]=0;
+    }
+    for(let y=ROWS-1;y>=0;y--){
+      if(stack.length) field[y][x]=stack.shift();
+    }
+  }
+}
+
+document.addEventListener("keydown",e=>{
+  if(e.key==="ArrowLeft") move(-1,0);
+  if(e.key==="ArrowRight") move(1,0);
+  if(e.key==="ArrowDown") drop();
+  if(e.key==="ArrowUp") rotate();
+});
+
+setInterval(()=>{
+  drop();
+  draw();
+},500);
+
+draw();
+</script>
+
+</body>
+</html>
