@@ -2,25 +2,64 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>ぷよぷよ修正版</title>
+<title>ぷよぷよスマホ対応</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
-body { text-align:center; background:#222; color:white;}
-canvas { background:#111; }
+body {
+  text-align:center;
+  background:#222;
+  color:white;
+  font-family:sans-serif;
+}
+
+canvas {
+  background:#111;
+  margin:10px;
+}
+
+/* ボタンUI */
+.controls {
+  margin-top:10px;
+}
+
+button {
+  font-size:20px;
+  padding:15px 25px;
+  margin:5px;
+  border-radius:10px;
+  border:none;
+}
+
+/* 押しやすく */
+button:active {
+  background:#888;
+}
 </style>
 </head>
 
 <body>
 
-<h1>ぷよぷよ修正版</h1>
+<h2>ぷよぷよ（スマホ対応）</h2>
 
 <canvas id="game" width="240" height="480"></canvas>
+
+<div class="controls">
+  <button onclick="move(-1,0)">←</button>
+  <button onclick="rotate()">⟳</button>
+  <button onclick="move(1,0)">→</button>
+</div>
+
+<div class="controls">
+  <button onclick="drop()">↓</button>
+</div>
 
 <script>
 const COLS=6, ROWS=12, SIZE=40;
 const colors=["","red","blue","green","yellow"];
 
 let field = Array.from({length:ROWS},()=>Array(COLS).fill(0));
-
 let puyo = newPuyo();
 
 function rand(){ return Math.floor(Math.random()*4)+1; }
@@ -102,9 +141,8 @@ function fix(){
     if(b.y>=0) field[b.y][b.x]=b.c;
   });
 
-  applyGravity(); // ←ここが重要
+  applyGravity();
   clearPuyo();
-
   puyo=newPuyo();
 }
 
@@ -161,6 +199,7 @@ function dfs(x,y,c,group,visited){
   dfs(x,y-1,c,group,visited);
 }
 
+/* キーボード対応も残す */
 document.addEventListener("keydown",e=>{
   if(e.key==="ArrowLeft") move(-1,0);
   if(e.key==="ArrowRight") move(1,0);
@@ -168,6 +207,7 @@ document.addEventListener("keydown",e=>{
   if(e.key==="ArrowUp") rotate();
 });
 
+/* ゲームループ */
 setInterval(()=>{
   drop();
   draw();
